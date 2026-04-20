@@ -358,10 +358,6 @@ class iOSCrashAnalyzer:
             for process in pattern_analysis['most_unstable_processes'][:3]:
                 self.console.print(f"     - [yellow]{process['name']}[/yellow]: {process['count']} crashes")
         
-        self.console.print("[blue]📊 Generating Failure Report...[/blue]")
-        failure_report = self.failure_detector.generate_failure_report(ips_reports)
-        self.console.print(Panel(failure_report, title="Failure Report", border_style="yellow"))
-        
         self.console.print(Panel(
             Text("IPS Analysis Complete", style="bold green"),
             title="Status",

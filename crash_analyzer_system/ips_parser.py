@@ -5,6 +5,7 @@ Parse iOS .ips crash report files
 
 import re
 import plistlib
+import json
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
@@ -27,8 +28,33 @@ class IPSParser:
                 logger.error(f"File not found: {file_path}")
                 return {}
             
-            with open(ips_path, 'rb') as f:
-                self.ips_data = plistlib.load(f)
+            try:
+                with open(ips_path, 'rb') as f:
+                    self.ips_data = plistlib.load(f)
+            except:
+             
+                try:
+                    with open(ips_path, 'r', encoding='utf-8') as f:
+                        self.ips_data = json.load(f)
+                except json.JSONDecodeError:
+                  
+                    try:
+                        self.ips_data = {}
+                        with open(ips_path, 'r', encoding='utf-8') as f:
+                            for line in f:
+                                line = line.strip()
+                                if line and line.startswith('{'):
+                                    try:
+                                        obj = json.loads(line)
+                                        self.ips_data.update(obj)
+                                    except json.JSONDecodeError:
+                                        pass 
+                    except Exception as e:
+                        logger.error(f"Failed to parse as JSON Lines: {e}")
+                        raise
+                except Exception as e:
+                    logger.error(f"Failed to parse as JSON: {e}")
+                    raise
             
             crash_info = self._extract_crash_info()
             
@@ -37,6 +63,8 @@ class IPSParser:
             
         except Exception as e:
             logger.error(f"Failed to parse .ips file {file_path}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return {}
     
     def _extract_crash_info(self) -> Dict[str, Any]:
@@ -48,8 +76,8 @@ class IPSParser:
             'file_type': 'ips',
             'timestamp': self.ips_data.get('timestamp', datetime.now().isoformat()),
             'app_name': self._get_app_name(),
-            'bundle_id': self.ips_data.get('bundleID', 'unknown'),
-            'app_version': self.ips_data.get('appVersion', 'unknown'),
+            'bundle_id': self._get_bundle_id(),
+            'app_version': self._get_app_version(),
             'os_version': self._get_os_version(),
             'device_model': self._get_device_model(),
             'exception_type': self._get_exception_type(),
@@ -73,6 +101,46 @@ class IPSParser:
                 return self.ips_data[key]
         return 'unknown'
     
+    def _get_bundle_id(self) -> str:
+        """Get bundle ID from IPS data"""
+    
+        if 'agent' in self.ips_data:
+            agent = self.ips_data['agent']
+            if isinstance(agent, str) and '(' in agent:
+             
+                return agent.split('(')[0].strip()
+        for key in ['bundleID', 'bundle_id', 'BundleIdentifier']:
+            if key in self.ips_data:
+                return self.ips_data[key]
+      
+        app_name = self._get_app_name()
+        if app_name != 'unknown':
+            return app_name
+        return 'unknown'
+    
+    def _get_app_version(self) -> str:
+        """Get application version from IPS data"""
+      
+        if 'agent' in self.ips_data:
+            agent = self.ips_data['agent']
+            if isinstance(agent, str) and 'iPhone OS' in agent:
+             
+                parts = agent.split('iPhone OS')
+                if len(parts) > 1:
+                    version_part = parts[1].split(')')[0].strip()
+                    return version_part
+       
+        os_ver = self._get_os_version()
+        if os_ver != 'unknown' and 'iPhone OS' in os_ver:
+            parts = os_ver.split('iPhone OS')
+            if len(parts) > 1:
+                return parts[1].strip()
+        if 'appVersion' in self.ips_data:
+            return self.ips_data['appVersion']
+        elif 'version' in self.ips_data:
+            return self.ips_data['version']
+        return 'unknown'
+    
     def _get_os_version(self) -> str:
         """Get OS version from IPS data"""
         if 'os_version' in self.ips_data:
@@ -83,6 +151,15 @@ class IPSParser:
     
     def _get_device_model(self) -> str:
         """Get device model from IPS data"""
+       
+        if 'agent' in self.ips_data:
+            agent = self.ips_data['agent']
+            if isinstance(agent, str) and 'iPhone' in agent:
+             
+                parts = agent.split(';')
+                for part in parts:
+                    if 'iPhone' in part:
+                        return part.strip().split(')')[0]
         if 'device_model' in self.ips_data:
             return self.ips_data['device_model']
         elif 'Model' in self.ips_data:
@@ -93,6 +170,8 @@ class IPSParser:
     
     def _get_exception_type(self) -> str:
         """Get exception type from IPS data"""
+        if 'bug_type' in self.ips_data:
+            return self.ips_data['bug_type']
         if 'exception' in self.ips_data:
             exception = self.ips_data['exception']
             if isinstance(exception, dict):
@@ -104,6 +183,8 @@ class IPSParser:
     
     def _get_exception_codes(self) -> str:
         """Get exception codes from IPS data"""
+        if 'bug_type' in self.ips_data:
+            return self.ips_data['bug_type']
         if 'exception' in self.ips_data:
             exception = self.ips_data['exception']
             if isinstance(exception, dict):

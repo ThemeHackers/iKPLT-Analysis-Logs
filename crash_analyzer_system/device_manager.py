@@ -309,10 +309,9 @@ class DeviceManager:
     async def extract_ips_files(self, output_dir: str) -> List[str]:
         """Extract .ips crash files from device"""
         try:
-            import subprocess
             from pathlib import Path
             
-            if not self.device:
+            if not self.crash_manager:
                 logger.error("Not connected to device")
                 return []
             
@@ -320,16 +319,15 @@ class DeviceManager:
             Path(output_dir).mkdir(parents=True, exist_ok=True)
             
            
-            cmd_list = ['pymobiledevice3', 'crash', 'ls', '--udid', self.device.serial]
-            result = subprocess.run(cmd_list, capture_output=True, text=True, timeout=30)
+            reports = await self.crash_manager.ls()
+            logger.info(f"Crash reports from device: {reports}")
             
-            if result.returncode != 0:
-                logger.error(f"Failed to list crash reports: {result.stderr}")
+            if not reports:
+                logger.info("No crash reports found on device")
                 return []
             
-           
-            reports = result.stdout.strip().split('\n') if result.stdout.strip() else []
             ips_files = [r for r in reports if r.endswith('.ips')]
+            logger.info(f"Filtered .ips files: {ips_files}")
             
             if not ips_files:
                 logger.info("No .ips files found on device")
@@ -340,16 +338,18 @@ class DeviceManager:
            
             downloaded_files = []
             for ips_file in ips_files:
-                cmd_download = ['pymobiledevice3', 'crash', 'pull', '--udid', self.device.serial, ips_file, output_dir]
-                result = subprocess.run(cmd_download, capture_output=True, text=True, timeout=60)
+                try:
+                  
+                    file_name = ips_file.lstrip('/')
+                    
                 
-                if result.returncode == 0:
-                    downloaded_path = Path(output_dir) / ips_file
+                    await self.crash_manager.pull(str(output_dir), entry=file_name, erase=False, progress_bar=False)
+                    downloaded_path = Path(output_dir) / file_name
                     if downloaded_path.exists():
                         downloaded_files.append(str(downloaded_path))
-                        logger.info(f"Downloaded: {ips_file}")
-                else:
-                    logger.warning(f"Failed to download {ips_file}: {result.stderr}")
+                        logger.info(f"Downloaded: {file_name}")
+                except Exception as e:
+                    logger.warning(f"Failed to download {ips_file}: {e}")
             
             logger.info(f"Successfully downloaded {len(downloaded_files)} .ips files")
             return downloaded_files
