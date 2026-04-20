@@ -1,0 +1,11 @@
+{
+  "timestamp": "20260420_213101",
+  "device_udid": "00008020-001C4D200104002E",
+  "device_name": "iOS Device",
+  "total_crashes": 38,
+  "panic_logs": 0,
+  "other_logs": 0,
+  "system_health": "Unknown",
+  "crash_trend": "stable",
+  "failure_report_text": "รายงานการวิเคราะห์ความเสียหายของอุปกรณ์\n==================================================\n\nสถิติโดยรวม:\n- Crash Reports ทั้งหมด: 38\n- สถานะสุขภาพระบบ: ต้องติดตาม\n- แนวโน้ม: คงที่\n\nProcess ที่ไม่เสถียรที่สุด:\n\nException Types ที่พบบ่อยที่สุด:\n- None: 38 crashes\n"
+}

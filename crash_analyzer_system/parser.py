@@ -32,7 +32,6 @@ class CrashReportParser:
         if file_ext not in self.supported_extensions:
             logger.warning(f"Unsupported file type: {file_ext}")
         
-        # Read file content
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
@@ -40,15 +39,50 @@ class CrashReportParser:
             logger.error(f"Failed to read file {file_path}: {e}")
             return None
         
-        # Parse based on file type
+        is_panic = self._is_panic_log(content, file_path)
+        
         if file_ext == '.ips':
-            return self._parse_ips(content, file_path)
+            parsed = self._parse_ips(content, file_path)
+            parsed['is_panic'] = is_panic
+            return parsed
         elif file_ext == '.panic':
-            return self._parse_panic(content, file_path)
+            parsed = self._parse_panic(content, file_path)
+            parsed['is_panic'] = True
+            return parsed
         elif file_ext == '.crash':
-            return self._parse_crash(content, file_path)
+            parsed = self._parse_crash(content, file_path)
+            parsed['is_panic'] = is_panic
+            return parsed
         else:
-            return self._parse_generic(content, file_path)
+            parsed = self._parse_generic(content, file_path)
+            parsed['is_panic'] = is_panic
+            return parsed
+    
+    def _is_panic_log(self, content: str, file_path: Path) -> bool:
+        """Determine if a log file is a panic log"""
+        panic_indicators = [
+            'panic',
+            'Panic',
+            'kernel panic',
+            'Kernel Panic',
+            'Panic Version',
+            'panic_string',
+            'Panic String',
+            'EXC_BAD_ACCESS',
+            'EXC_BAD_INSTRUCTION',
+            'SIGSEGV',
+            'SIGBUS',
+            'SIGABRT'
+        ]
+        
+        content_lower = content.lower()
+        file_name_lower = file_path.name.lower()
+        
+        for indicator in panic_indicators:
+            if indicator.lower() in content_lower or indicator.lower() in file_name_lower:
+                return True
+        
+        return False
     
     def _parse_ips(self, content: str, file_path: Path) -> Dict[str, Any]:
         """Parse .ips file (iOS crash report format)"""
@@ -65,7 +99,6 @@ class CrashReportParser:
         for line in lines:
             line = line.strip()
             
-            # Parse key-value pairs
             if ':' in line:
                 key, value = line.split(':', 1)
                 key = key.strip()
@@ -88,6 +121,10 @@ class CrashReportParser:
                     crash_data['exception_type'] = value
                 elif key == 'Exception Message':
                     crash_data['exception_message'] = value
+                elif key == 'Termination Reason':
+                    crash_data['termination_reason'] = value
+                elif key == 'Termination Signal':
+                    crash_data['termination_signal'] = value
                 elif key == 'Process':
                     crash_data['process_name'] = value.split(' ')[0] if ' ' in value else value
                     if '[' in value:
@@ -96,6 +133,10 @@ class CrashReportParser:
                     crash_data['parent_process'] = value.split(' ')[0] if ' ' in value else value
                 elif key == 'Hardware Model':
                     crash_data['hardware_model'] = value
+                elif key == 'Bug Type':
+                    crash_data['bug_type'] = value
+                elif key == 'Triggered by Thread':
+                    crash_data['triggered_by_thread'] = value
         
         crash_data['raw_content'] = content
         crash_data['parsed_metadata'] = self._extract_ips_metadata(content)
@@ -115,7 +156,6 @@ class CrashReportParser:
             'fault_code_info': None
         }
         
-        # Extract panic information
         lines = content.split('\n')
         
         for line in lines:
@@ -127,8 +167,7 @@ class CrashReportParser:
                 crash_data['process_id'] = int(line.split(':')[1].strip())
             elif 'Timestamp' in line or 'Date' in line:
                 crash_data['crash_date'] = line.split(':')[1].strip()
-            # Look for fault codes (hex codes like 0x400, mic1, etc.)
-            elif re.search(r'(0x[0-9a-fA-F]+|mic\d+|prs\d+|tg0b|ans\d+)', line):
+            elif re.search(r'(0x[0-9a-fA-F]{4,}|mic\d|prs\d|tg0b|ans\d|Ememory|AppleSocHot|EXBrightComponent)', line):
                 fault_code_match = re.search(r'(0x[0-9a-fA-F]+|mic\d+|prs\d+|tg0b|ans\d+)', line)
                 if fault_code_match:
                     crash_data['fault_code'] = fault_code_match.group(1)
@@ -188,18 +227,15 @@ class CrashReportParser:
         """Extract additional metadata from .ips file"""
         metadata = {}
         
-        # Extract thread that crashed
         if 'Thread' in content:
             thread_match = re.search(r'Thread (\d+)', content)
             if thread_match:
                 metadata['crashed_thread'] = thread_match.group(1)
         
-        # Extract binary images
         images = re.findall(r'Binary Images:.*?\n\n', content, re.DOTALL)
         if images:
             metadata['binary_images_count'] = len(images)
         
-        # Extract stack traces
         stack_traces = re.findall(r'Thread \d+.*?Stack:', content, re.DOTALL)
         metadata['stack_traces_count'] = len(stack_traces)
         
@@ -209,12 +245,10 @@ class CrashReportParser:
         """Extract additional metadata from .panic file"""
         metadata = {}
         
-        # Extract panic string
         panic_match = re.search(r'Panic String: (.+)', content)
         if panic_match:
             metadata['panic_string'] = panic_match.group(1).strip()
         
-        # Extract backtrace
         if 'Backtrace' in content:
             metadata['has_backtrace'] = True
         
@@ -224,7 +258,6 @@ class CrashReportParser:
         """Extract additional metadata from .crash file"""
         metadata = {}
         
-        # Extract error codes
         error_codes = re.findall(r'Error: (0x[0-9a-fA-F]+)', content)
         if error_codes:
             metadata['error_codes'] = error_codes

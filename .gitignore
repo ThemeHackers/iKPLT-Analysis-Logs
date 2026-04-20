@@ -1,4 +1,4 @@
-# Python
+
 __pycache__/
 *.py[cod]
 *$py.class
@@ -14,39 +14,41 @@ lib/
 lib64/
 parts/
 sdist/
+
+pymobiledevice3/
+!iDevicePanicLogAnalyzer-1.7.4-full/
 var/
 wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 
-# Virtual Environment
+
 .venv/
 venv/
 ENV/
 env/
 
-# Database
 *.db
 *.sqlite
 *.sqlite3
 data/
 crash_reports/
 
-# IDE
+
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+
 .DS_Store
 Thumbs.db
 
-# Logs
+
 *.log
 
-# Temporary files
+
 *.tmp
 *.bak

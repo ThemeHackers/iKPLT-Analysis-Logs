@@ -16,7 +16,17 @@ class DatabaseManager:
     def __init__(self, db_path: str = None):
         self.db_path = db_path or DATABASE_CONFIG["path"]
         self.timeout = DATABASE_CONFIG["timeout"]
-        self.init_database()
+        
+        db_file_path = Path(self.db_path)
+        if not db_file_path.parent.exists():
+            db_file_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            self.init_database()
+        except Exception as e:
+            print(f"Warning: Database initialization failed: {e}")
+            print(f"Database path: {self.db_path}")
+            print(f"Database directory exists: {db_file_path.parent.exists()}")
     
     def init_database(self):
         """Initialize database with all required tables"""
@@ -53,6 +63,22 @@ class DatabaseManager:
                 UNIQUE(device_udid, file_name)
             )
         ''')
+        
+        # Add new columns if they don't exist (migration)
+        new_columns = [
+            ('exception_codes', 'TEXT'),
+            ('termination_reason', 'TEXT'),
+            ('termination_signal', 'TEXT'),
+            ('bug_type', 'TEXT'),
+            ('triggered_by_thread', 'TEXT'),
+            ('is_panic', 'INTEGER DEFAULT 0')
+        ]
+        
+        for column_name, column_type in new_columns:
+            try:
+                cursor.execute(f'ALTER TABLE crash_reports ADD COLUMN {column_name} {column_type}')
+            except sqlite3.OperationalError:
+                pass
         
         # Process information table
         cursor.execute('''
@@ -147,46 +173,59 @@ class DatabaseManager:
     
     def insert_crash_report(self, crash_data: Dict[str, Any]) -> int:
         """Insert a crash report into the database"""
-        conn = sqlite3.connect(self.db_path, timeout=self.timeout)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT OR REPLACE INTO crash_reports
-            (device_udid, file_name, file_path, file_type, file_size, incident_id,
-             crash_reporter_key, build_version, product_type, os_version, crash_date,
-             crash_time, exception_type, exception_message, process_name, process_id,
-             parent_process, hardware_model, fault_code, fault_code_info, raw_content, parsed_metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            crash_data.get('device_udid'),
-            crash_data.get('file_name'),
-            crash_data.get('file_path'),
-            crash_data.get('file_type'),
-            crash_data.get('file_size'),
-            crash_data.get('incident_id'),
-            crash_data.get('crash_reporter_key'),
-            crash_data.get('build_version'),
-            crash_data.get('product_type'),
-            crash_data.get('os_version'),
-            crash_data.get('crash_date'),
-            crash_data.get('crash_time'),
-            crash_data.get('exception_type'),
-            crash_data.get('exception_message'),
-            crash_data.get('process_name'),
-            crash_data.get('process_id'),
-            crash_data.get('parent_process'),
-            crash_data.get('hardware_model'),
-            crash_data.get('fault_code'),
-            json.dumps(crash_data.get('fault_code_info', {})),
-            crash_data.get('raw_content'),
-            json.dumps(crash_data.get('parsed_metadata', {}))
-        ))
-        
-        crash_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
-        return crash_id
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=self.timeout)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT OR REPLACE INTO crash_reports
+                (device_udid, file_name, file_path, file_type, file_size, incident_id,
+                 crash_reporter_key, build_version, product_type, os_version, crash_date,
+                 crash_time, exception_type, exception_message, exception_codes, termination_reason,
+                 termination_signal, process_name, process_id, parent_process, hardware_model,
+                 bug_type, triggered_by_thread, fault_code, fault_code_info, raw_content, parsed_metadata, is_panic)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                crash_data.get('device_udid', 'local'),
+                crash_data.get('file_name'),
+                crash_data.get('file_path'),
+                crash_data.get('file_type'),
+                crash_data.get('file_size'),
+                crash_data.get('incident_id'),
+                crash_data.get('crash_reporter_key'),
+                crash_data.get('build_version'),
+                crash_data.get('product_type'),
+                crash_data.get('os_version'),
+                crash_data.get('crash_date'),
+                crash_data.get('crash_time'),
+                crash_data.get('exception_type'),
+                crash_data.get('exception_message'),
+                crash_data.get('exception_codes'),
+                crash_data.get('termination_reason'),
+                crash_data.get('termination_signal'),
+                crash_data.get('process_name'),
+                crash_data.get('process_id'),
+                crash_data.get('parent_process'),
+                crash_data.get('hardware_model'),
+                crash_data.get('bug_type'),
+                crash_data.get('triggered_by_thread'),
+                crash_data.get('fault_code'),
+                json.dumps(crash_data.get('fault_code_info', {})),
+                crash_data.get('raw_content'),
+                json.dumps(crash_data.get('parsed_metadata', {})),
+                1 if crash_data.get('is_panic', False) else 0
+            ))
+            
+            crash_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            
+            return crash_id
+        except Exception as e:
+            print(f"Error inserting crash report: {e}")
+            print(f"Crash data keys: {crash_data.keys()}")
+            print(f"Database path: {self.db_path}")
+            raise
     
     def get_crash_reports(self, device_udid: str = None, limit: int = 100) -> List[Dict]:
         """Get crash reports, optionally filtered by device"""

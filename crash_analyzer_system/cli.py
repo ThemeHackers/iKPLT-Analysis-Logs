@@ -20,7 +20,6 @@ from .database import DatabaseManager
 from .fault_codes import get_fault_code_info, search_fault_codes
 import logging
 
-# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -126,7 +125,6 @@ class CrashAnalyzerCLI:
         
         for report in reports:
             fault_code = report.get('fault_code') or 'N/A'
-            # Highlight fault codes in red if present
             if fault_code != 'N/A':
                 fault_code = f"[red]{fault_code}[/red]"
             
@@ -176,7 +174,6 @@ class CrashAnalyzerCLI:
         
         stats = self.analyzer.get_statistics()
         
-        # Main statistics table
         stats_table = Table(title="Overview")
         stats_table.add_column("Metric", style="cyan")
         stats_table.add_column("Value", style="green")
@@ -186,7 +183,6 @@ class CrashAnalyzerCLI:
         
         console.print(stats_table)
         
-        # Crashes by device table
         if stats['crashes_by_device']:
             console.print("\n[bold yellow]Crashes by Device:[/bold yellow]")
             device_table = Table()
@@ -198,7 +194,6 @@ class CrashAnalyzerCLI:
             
             console.print(device_table)
         
-        # Top exceptions table
         if stats['top_exceptions']:
             console.print("\n[bold magenta]Top Exception Types:[/bold magenta]")
             exc_table = Table()
@@ -271,7 +266,6 @@ class CrashAnalyzerCLI:
 
 def main():
     """Main entry point"""
-    # Display banner
     banner = Panel(
         "[bold cyan]iOS Crash Report Analyzer System[/bold cyan]\n"
         "[green]Complete Python Implementation[/green]\n"
@@ -302,36 +296,28 @@ Examples:
     
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
-    # List devices command
     subparsers.add_parser('list-devices', help='List connected iOS devices')
     
-    # Analyze command
     analyze_parser = subparsers.add_parser('analyze', help='Analyze device and extract crash reports')
     analyze_parser.add_argument('--udid', help='Specific device UDID')
     
-    # List crashes command
     list_parser = subparsers.add_parser('list-crashes', help='List crash reports from database')
     list_parser.add_argument('--device', help='Filter by device UDID')
     list_parser.add_argument('--limit', type=int, default=100, help='Limit results')
     
-    # Search command
     search_parser = subparsers.add_parser('search', help='Search crash reports')
     search_parser.add_argument('query', help='Search query')
     search_parser.add_argument('--limit', type=int, default=100, help='Limit results')
     
-    # Statistics command
     subparsers.add_parser('stats', help='Show database statistics')
     
-    # Export command
     export_parser = subparsers.add_parser('export', help='Export crash reports to JSON')
     export_parser.add_argument('output', help='Output JSON file path')
     
-    # Process file command
     process_parser = subparsers.add_parser('process-file', help='Process local crash report file')
     process_parser.add_argument('file', help='Crash report file path')
     process_parser.add_argument('--device-udid', default='local', help='Device UDID to assign')
     
-    # Fault code lookup command
     fault_parser = subparsers.add_parser('fault-code', help='Look up fault code information')
     fault_parser.add_argument('code', help='Fault code to look up')
     
@@ -343,7 +329,6 @@ Examples:
     
     cli = CrashAnalyzerCLI()
     
-    # Execute command
     if args.command == 'list-devices':
         asyncio.run(cli.list_devices())
     elif args.command == 'analyze':
