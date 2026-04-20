@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>iDevicePanicLogAnalyzer</id>
+    <version>1.7.4</version>
+    <title>iDevice Panic Log Analyzer</title>
+    <authors>Wayne Bonnici</authors>
+    <owners>
+    </owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A quick and easy panic log extraction and analysis tool for iDevices.</description>
+  </metadata>
+</package>
