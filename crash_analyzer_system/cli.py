@@ -17,6 +17,7 @@ from rich.text import Text
 
 from .analyzer import CrashAnalyzer
 from .database import DatabaseManager
+from .fault_codes import get_fault_code_info, search_fault_codes
 import logging
 
 # Setup logging
@@ -119,15 +120,22 @@ class CrashAnalyzerCLI:
         table.add_column("Device UDID", style="green")
         table.add_column("File", style="blue")
         table.add_column("Type", style="magenta")
+        table.add_column("Fault Code", style="red")
         table.add_column("Date", style="yellow")
         table.add_column("Process", style="white")
         
         for report in reports:
+            fault_code = report.get('fault_code') or 'N/A'
+            # Highlight fault codes in red if present
+            if fault_code != 'N/A':
+                fault_code = f"[red]{fault_code}[/red]"
+            
             table.add_row(
                 str(report['id']),
                 report['device_udid'][:16] + "...",
                 report['file_name'],
                 report['exception_type'] or 'N/A',
+                fault_code,
                 report['crash_date'] or 'N/A',
                 report['process_name'] or 'N/A'
             )
@@ -237,6 +245,28 @@ class CrashAnalyzerCLI:
                 console.print("\n[red]Errors:[/red]")
                 for error in results['errors']:
                     console.print(f"  [red]•[/red] {error}")
+    
+    def fault_code_lookup(self, code: str):
+        """Look up a fault code"""
+        console.print(f"\n[bold cyan]=== Fault Code Lookup: {code} ===[/bold cyan]\n")
+        
+        info = get_fault_code_info(code)
+        
+        table = Table(title="Fault Code Information")
+        table.add_column("Field", style="cyan")
+        table.add_column("Value", style="green")
+        
+        table.add_row("Code", code)
+        table.add_row("Description", info.get('description', 'Unknown'))
+        table.add_row("Device Series", info.get('device_series', 'Unknown'))
+        
+        if info.get('note'):
+            table.add_row("Note", info.get('note'))
+        
+        if info.get('decimal_value'):
+            table.add_row("Decimal Value", str(info.get('decimal_value')))
+        
+        console.print(table)
 
 
 def main():
@@ -266,6 +296,7 @@ Examples:
   %(prog)s stats                     Show database statistics
   %(prog)s export output.json        Export crash reports to JSON
   %(prog)s process-file crash.ips    Process local crash report file
+  %(prog)s fault-code 0x400          Look up fault code information
         """
     )
     
@@ -300,6 +331,10 @@ Examples:
     process_parser.add_argument('file', help='Crash report file path')
     process_parser.add_argument('--device-udid', default='local', help='Device UDID to assign')
     
+    # Fault code lookup command
+    fault_parser = subparsers.add_parser('fault-code', help='Look up fault code information')
+    fault_parser.add_argument('code', help='Fault code to look up')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -323,6 +358,8 @@ Examples:
         cli.export_json(args.output)
     elif args.command == 'process-file':
         asyncio.run(cli.process_local_file(args.file, args.device_udid))
+    elif args.command == 'fault-code':
+        cli.fault_code_lookup(args.code)
 
 
 if __name__ == '__main__':

@@ -45,6 +45,8 @@ class DatabaseManager:
                 process_id INTEGER,
                 parent_process TEXT,
                 hardware_model TEXT,
+                fault_code TEXT,
+                fault_code_info TEXT,
                 raw_content TEXT,
                 parsed_metadata TEXT,
                 extracted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -153,8 +155,8 @@ class DatabaseManager:
             (device_udid, file_name, file_path, file_type, file_size, incident_id,
              crash_reporter_key, build_version, product_type, os_version, crash_date,
              crash_time, exception_type, exception_message, process_name, process_id,
-             parent_process, hardware_model, raw_content, parsed_metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             parent_process, hardware_model, fault_code, fault_code_info, raw_content, parsed_metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             crash_data.get('device_udid'),
             crash_data.get('file_name'),
@@ -174,6 +176,8 @@ class DatabaseManager:
             crash_data.get('process_id'),
             crash_data.get('parent_process'),
             crash_data.get('hardware_model'),
+            crash_data.get('fault_code'),
+            json.dumps(crash_data.get('fault_code_info', {})),
             crash_data.get('raw_content'),
             json.dumps(crash_data.get('parsed_metadata', {}))
         ))

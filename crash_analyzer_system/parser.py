@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import logging
 
+from .fault_codes import get_fault_code_info
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,7 +110,9 @@ class CrashReportParser:
             'file_type': '.panic',
             'file_size': file_path.stat().st_size,
             'exception_type': 'Kernel Panic',
-            'parsed_metadata': {}
+            'parsed_metadata': {},
+            'fault_code': None,
+            'fault_code_info': None
         }
         
         # Extract panic information
@@ -123,6 +127,12 @@ class CrashReportParser:
                 crash_data['process_id'] = int(line.split(':')[1].strip())
             elif 'Timestamp' in line or 'Date' in line:
                 crash_data['crash_date'] = line.split(':')[1].strip()
+            # Look for fault codes (hex codes like 0x400, mic1, etc.)
+            elif re.search(r'(0x[0-9a-fA-F]+|mic\d+|prs\d+|tg0b|ans\d+)', line):
+                fault_code_match = re.search(r'(0x[0-9a-fA-F]+|mic\d+|prs\d+|tg0b|ans\d+)', line)
+                if fault_code_match:
+                    crash_data['fault_code'] = fault_code_match.group(1)
+                    crash_data['fault_code_info'] = get_fault_code_info(fault_code_match.group(1))
         
         crash_data['raw_content'] = content
         crash_data['exception_message'] = 'Kernel panic occurred'
