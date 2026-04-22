@@ -60,95 +60,94 @@ class iOSCrashAnalyzer:
             
             if not await self.device_manager.connect_device(devices[0]['udid']):
                 return
-            
         
             info = await self.device_manager.get_iphone_full_info()
             if not info:
                 return
-            
         
             from rich.table import Table
-            main_table = Table(show_header=True, header_style="bold cyan", border_style="cyan", pad_edge=False, expand=True)
-            main_table.add_column("Property", style="white", width=20)
-            main_table.add_column("Value", style="cyan")
+            from rich.panel import Panel
+            from rich.console import Group
             
-          
             device_name = info.get('device_name', 'Unknown')
             product_type = info.get('product_type', 'Unknown')
-            main_table.add_row("📱 Device", f"[bold]{device_name}[/bold] ([white]{product_type}[/white])")
-            
-         
+            model_name = info.get('model_name', product_type)
             ios_version = info.get('product_version', 'Unknown')
             build_version = info.get('build_version', 'Unknown')
-            main_table.add_row("📱 iOS Version", f"[cyan]{ios_version}[/cyan] ([white]{build_version}[/white])")
             
-      
+            self.console.print()
+            self.console.print(f"[bold cyan]Device:[/bold cyan] [white]{device_name}[/white] ([cyan]{model_name}[/cyan])")
+            self.console.print(f"[bold cyan]iOS:[/bold cyan] [white]{ios_version}[/white] ([cyan]{build_version}[/cyan])")
+            self.console.print()
+            
+            main_table = Table(show_header=False, box=None, padding=(0, 1), expand=False)
+            main_table.add_column("", style="white", width=28)
+            main_table.add_column("", style="cyan")
+            
             hardware_model = info.get('hardware_model', 'Unknown')
             device_class = info.get('device_class', 'Unknown')
-            main_table.add_row("🔧 Hardware", f"[cyan]{hardware_model}[/cyan] ([white]{device_class}[/white])")
+            main_table.add_row("Hardware", f"[cyan]{hardware_model}[/cyan] ([white]{device_class}[/white])")
             
           
             serial = info.get('serial_number', 'Unknown')
-            main_table.add_row("🔢 Serial Number", f"[cyan]{serial}[/cyan]")
+            main_table.add_row("Serial Number", f"[cyan]{serial}[/cyan]")
             
           
             imei = info.get('imei', 'Unknown')
             if imei != 'Unknown':
-                main_table.add_row("📞 IMEI", f"[cyan]{imei}[/cyan]")
+                main_table.add_row("IMEI", f"[cyan]{imei}[/cyan]")
             
          
             ecid = info.get('ecid', 'Unknown')
             if ecid != 'Unknown':
-                main_table.add_row("🆔 ECID", f"[cyan]{ecid}[/cyan]")
+                main_table.add_row("ECID", f"[cyan]{ecid}[/cyan]")
             
     
             udid = info.get('udid', 'Unknown')
             if udid != 'Unknown' and len(udid) > 16:
                 display_udid = udid[:8] + "..." + udid[-8:]
-                main_table.add_row("🆔 UDID", f"[cyan]{display_udid}[/cyan]")
+                main_table.add_row("UDID", f"[cyan]{display_udid}[/cyan]")
             else:
-                main_table.add_row("🆔 UDID", f"[cyan]{udid}[/cyan]")
+                main_table.add_row("UDID", f"[cyan]{udid}[/cyan]")
             
            
             activated = info.get('activated', 'Unknown')
             activated_color = "green" if activated == "Activated" else "yellow"
-            main_table.add_row("✅ Activated", f"[{activated_color}]{activated}[/{activated_color}]")
+            main_table.add_row("Activated", f"[{activated_color}]{activated}[/{activated_color}]")
             
         
             battery = info.get('battery')
             if battery:
                 try:
                     cycle_count = battery.get('CycleCount', battery.get('CycleCount', 'Unknown'))
+                    if cycle_count != 'Unknown' and cycle_count:
+                        main_table.add_row("Battery Cycles", f"[yellow]{cycle_count}[/yellow]")
+                    
                     design_capacity = battery.get('DesignCapacity', battery.get('NominalChargeCapacity', 'Unknown'))
                     full_charge_capacity = battery.get('FullChargeCapacity', battery.get('MaximumChargeCapacity', 'Unknown'))
                     battery_health = battery.get('MaximumFCC', battery.get('MaximumChargeCapacity', 'Unknown'))
                     
-                    main_table.add_row("🔋 Battery Cycles", f"[yellow]{cycle_count}[/yellow]")
-                    
-                   
                     health_displayed = False
                     if battery_health != 'Unknown' and design_capacity != 'Unknown':
                         try:
                             health_pct = (int(battery_health) / int(design_capacity)) * 100
-                            main_table.add_row("🔋 Battery Health", f"[green]{health_pct:.1f}%[/green]")
+                            main_table.add_row("Battery Health", f"[green]{health_pct:.1f}%[/green]")
                             health_displayed = True
                         except:
                             pass
                     
-                  
                     if not health_displayed and 'BatteryHealth' in battery:
                         try:
                             health_val = battery['BatteryHealth']
                             if isinstance(health_val, (int, float)):
-                                main_table.add_row("🔋 Battery Health", f"[green]{health_val}%[/green]")
+                                main_table.add_row("Battery Health", f"[green]{health_val}%[/green]")
                         except:
                             pass
                     
-                
                     if full_charge_capacity != 'Unknown' and design_capacity != 'Unknown':
                         try:
                             capacity_pct = (int(full_charge_capacity) / int(design_capacity)) * 100
-                            main_table.add_row("🔋 Max Capacity", f"[cyan]{capacity_pct:.1f}%[/cyan]")
+                            main_table.add_row("Max Capacity", f"[cyan]{capacity_pct:.1f}%[/cyan]")
                         except:
                             pass
                 except Exception as e:
@@ -159,34 +158,131 @@ class iOSCrashAnalyzer:
             if gestalt:
                 model_number = gestalt.get('ModelNumber', 'Unknown')
                 if model_number != 'Unknown':
-                    main_table.add_row("📦 Model Number", f"[cyan]{model_number}[/cyan]")
+                    main_table.add_row("Model Number", f"[cyan]{model_number}[/cyan]")
                 
                 region = gestalt.get('RegionCode', 'Unknown')
                 if region != 'Unknown':
-                    main_table.add_row("🌏 Region", f"[cyan]{region}[/cyan]")
+                    main_table.add_row("Region", f"[cyan]{region}[/cyan]")
                 
                 color = gestalt.get('DeviceColorString', gestalt.get('DeviceColor', 'Unknown'))
                 if color != 'Unknown':
-                    main_table.add_row("🎨 Color", f"[cyan]{color}[/cyan]")
+                    main_table.add_row("Color", f"[cyan]{color}[/cyan]")
             else:
              
                 try:
                     region_info = info.get('region_info', 'Unknown')
                     if region_info != 'Unknown':
-                        main_table.add_row("🌏 Region", f"[cyan]{region_info}[/cyan]")
+                        main_table.add_row("Region", f"[cyan]{region_info}[/cyan]")
                 except:
                     pass
                 
                 try:
                     model_num = info.get('model_number', 'Unknown')
                     if model_num != 'Unknown':
-                        main_table.add_row("📦 Model Number", f"[cyan]{model_num}[/cyan]")
+                        main_table.add_row("Model Number", f"[cyan]{model_num}[/cyan]")
                 except:
                     pass
             
+            storage = info.get('storage')
+            if storage:
+                try:
+                    total_capacity = storage.get('total_capacity_gb', 'Unknown')
+                    used_capacity = storage.get('used_capacity_gb', 'Unknown')
+                    free_capacity = storage.get('free_capacity_gb', 'Unknown')
+                    main_table.add_row("Total Capacity", f"[cyan]{total_capacity} GB[/cyan]")
+                    main_table.add_row("Used Capacity", f"[yellow]{used_capacity} GB[/yellow]")
+                    main_table.add_row("Free Space", f"[green]{free_capacity} GB[/green]")
+                except:
+                    pass
+            
+            storage_categories = info.get('storage_categories')
+            if storage_categories:
+                try:
+                    categories_str = ", ".join([f"{k}: {v}GB" for k, v in storage_categories.items() if v > 0])
+                    main_table.add_row("Storage Breakdown", f"[cyan]{categories_str}[/cyan]")
+                except:
+                    pass
+            
+            jailbreak = info.get('jailbreak')
+            if jailbreak:
+                try:
+                    jailbroken = jailbreak.get('jailbroken', False)
+                    jailbreak_color = "red" if jailbroken else "green"
+                    jailbreak_status = "Yes" if jailbroken else "No"
+                    main_table.add_row("Jailbroken", f"[{jailbreak_color}]{jailbreak_status}[/{jailbreak_color}]")
+                except:
+                    pass
+            
+            production_date = info.get('production_date', 'Unknown')
+            if production_date != 'Unknown':
+                main_table.add_row("Production Date", f"[cyan]{production_date}[/cyan]")
+            
+            warranty_status = info.get('warranty_status', 'Unknown')
+            warranty_date = info.get('warranty_date', 'Unknown')
+            if warranty_status != 'Unknown':
+                try:
+                    warranty_color = "red" if warranty_status == "Warranty Expired" else "green"
+                    main_table.add_row("Warranty", f"[{warranty_color}]{warranty_status}[/{warranty_color}]")
+                    if warranty_date != 'Unknown':
+                        main_table.add_row("Warranty Date", f"[cyan]{warranty_date}[/cyan]")
+                except:
+                    pass
+            
+            cpu = info.get('cpu')
+            if cpu:
+                try:
+                    cpu_name = cpu.get('cpu', 'Unknown')
+                    cores = cpu.get('cores', 0)
+                    architecture = cpu.get('architecture', 'Unknown')
+                    main_table.add_row("CPU", f"[cyan]{cpu_name}[/cyan]")
+                    if cores > 0:
+                        main_table.add_row("CPU Cores", f"[cyan]{cores}[/cyan]")
+                    if architecture != 'Unknown':
+                        main_table.add_row("Architecture", f"[cyan]{architecture}[/cyan]")
+                except:
+                    pass
+            
+            hard_disk_type = info.get('hard_disk_type')
+            if hard_disk_type and hard_disk_type != 'Unknown':
+                main_table.add_row("Storage Type", f"[cyan]{hard_disk_type}[/cyan]")
+            
+            charging = info.get('charging')
+            if charging:
+                try:
+                    charging_type = charging.get('charging_type', 'Unknown')
+                    wattage = charging.get('wattage', 'Unknown')
+                    battery_percentage = charging.get('battery_percentage', 'Unknown')
+                    
+                    if charging_type != 'Unknown':
+                        main_table.add_row("Charging Type", f"[cyan]{charging_type}[/cyan]")
+                    if wattage != 'Unknown' and wattage != '0W':
+                        main_table.add_row("Wattage", f"[cyan]{wattage}[/cyan]")
+                    if battery_percentage != 'Unknown':
+                        main_table.add_row("Battery Level", f"[yellow]{battery_percentage}%[/yellow]")
+                except:
+                    pass
+            
+            icloud_status = info.get('icloud_status')
+            try:
+                icloud = icloud_status.get('icloud', 'Unknown') if icloud_status else 'Unknown'
+                apple_id_lock = icloud_status.get('apple_id_lock', 'Unknown') if icloud_status else 'Unknown'
+                
+                if icloud != 'Unknown':
+                    icloud_color = "green" if icloud == "On" else "yellow"
+                    main_table.add_row("iCloud", f"[{icloud_color}]{icloud}[/{icloud_color}]")
+                
+                if apple_id_lock != 'Unknown':
+                    lock_color = "red" if apple_id_lock == "On" else "green"
+                    main_table.add_row("Apple ID Lock", f"[{lock_color}]{apple_id_lock}[/{lock_color}]")
+            except:
+                pass
+            
+            sales_region = info.get('sales_region')
+            if sales_region and sales_region != 'Unknown':
+                main_table.add_row("Sales Region", f"[cyan]{sales_region}[/cyan]")
           
-            self.console.print()
-            self.console.print(Panel(main_table, title="📱 iPhone Information", border_style="cyan", padding=(1, 2)))
+          
+            self.console.print(main_table)
             
         except Exception as e:
             logger.error(f"Failed to display iPhone info: {e}")
@@ -376,9 +472,6 @@ class iOSCrashAnalyzer:
             padding=(1, 2)
         ))
         
-
-        await self._display_iphone_info()
-        
         self.console.print()
         self.console.print("[bold red]▶[/bold red] [bold white]Panic Report Analysis[/bold white]")
         devices = await self.device_manager.list_devices()
@@ -477,9 +570,6 @@ class iOSCrashAnalyzer:
             border_style="magenta",
             padding=(1, 2)
         ))
-        
-        
-        await self._display_iphone_info()
         
         self.console.print()
         self.console.print("[bold magenta]▶[/bold magenta] [bold white]Crash Report Statistics[/bold white]")
@@ -619,9 +709,6 @@ class iOSCrashAnalyzer:
             padding=(1, 2)
         ))
         
- 
-        await self._display_iphone_info()
-        
         self.console.print()
         self.console.print("[bold magenta]▶[/bold magenta] [bold white]Device Information[/bold white]")
         devices = await self.device_manager.list_devices()
@@ -753,8 +840,6 @@ class iOSCrashAnalyzer:
             border_style="blue",
             padding=(1, 2)
         ))
-
-        await self._display_iphone_info()
         
         self.console.print()
         self.console.print("[bold blue]▶[/bold blue] [bold white]Connecting to Device[/bold white]")
@@ -804,9 +889,6 @@ class iOSCrashAnalyzer:
             border_style="yellow",
             padding=(1, 2)
         ))
-        
-     
-        await self._display_iphone_info()
         
         self.console.print()
         self.console.print("[bold yellow]▶[/bold yellow] [bold white]Additional Diagnostics[/bold white]")
@@ -862,9 +944,6 @@ class iOSCrashAnalyzer:
             border_style="cyan",
             padding=(1, 2)
         ))
-        
-       
-        await self._display_iphone_info()
         
         self.console.print()
         self.console.print("[bold cyan]▶[/bold cyan] [bold white]Crash Monitoring[/bold white]")
@@ -922,9 +1001,6 @@ class iOSCrashAnalyzer:
             padding=(1, 2)
         ))
         
-      
-        await self._display_iphone_info()
-        
         self.console.print()
         self.console.print("[bold green]▶[/bold green] [bold white]Connecting to Device[/bold white]")
         devices = await self.device_manager.list_devices()
@@ -971,6 +1047,18 @@ class iOSCrashAnalyzer:
                 await self.device_manager.disconnect()
             except:
                 pass
+    
+    async def run_device_info(self):
+        """Display iPhone device information"""
+        self.console.print()
+        self.console.print(Panel(
+            Text("📱 iPhone Device Information", style="bold green"),
+            title="Device Info",
+            border_style="green",
+            padding=(1, 2)
+        ))
+        
+        await self._display_iphone_info()
 
 
 def print_usage():
@@ -998,7 +1086,6 @@ def print_usage():
     
     table.add_row("python run.py", "System health analysis - Analyze crash reports from database")
     table.add_row("python run.py --panic", "Panic log analysis - Analyze latest panic reports from device")
-    table.add_row("python run.py --check", "Panic log analysis (alias for --panic)")
     table.add_row("python run.py --ips [output_dir]", "Extract and analyze .ips crash files from device")
     table.add_row("python run.py --analyze [udid]", "Full device analysis - Extract and analyze all crash reports")
     table.add_row("python run.py --udid [UDID]", "Specify device UDID for analysis")
@@ -1006,6 +1093,7 @@ def print_usage():
     table.add_row("python run.py --diagnostics", "Get device diagnostics information")
     table.add_row("python run.py --sysdiagnose [output]", "Collect sysdiagnose archive from device")
     table.add_row("python run.py --watch [process]", "Watch for new crash reports in real-time")
+    table.add_row("python run.py --info", "Display iPhone device information")
     
     console.print(table)
 
@@ -1022,6 +1110,7 @@ async def main():
     parser.add_argument('--diagnostics', action='store_true', help='Get device diagnostics')
     parser.add_argument('--sysdiagnose', nargs='?', const='sysdiagnose.tar.gz', help='Collect sysdiagnose archive')
     parser.add_argument('--watch', nargs='?', const=True, help='Watch for new crash reports')
+    parser.add_argument('--info', action='store_true', help='Display iPhone device information')
     parser.add_argument('-h', '--help', action='store_true', help='Show this help message')
     
     args = parser.parse_args()
@@ -1049,6 +1138,8 @@ async def main():
     elif args.analyze:
         udid = args.analyze if isinstance(args.analyze, str) else args.udid
         await analyzer.run_full_analysis(udid)
+    elif args.info:
+        await analyzer.run_device_info()
     else:
         await analyzer.run_system_health_analysis()
 

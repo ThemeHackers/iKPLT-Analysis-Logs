@@ -14,7 +14,7 @@ lib/
 lib64/
 parts/
 sdist/
-
+ips_reports/
 pymobiledevice3/
 !iDevicePanicLogAnalyzer-1.7.4-full/
 var/

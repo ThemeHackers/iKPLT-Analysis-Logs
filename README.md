@@ -66,6 +66,12 @@ pip install pymobiledevice3>=3.0.0 rich>=13.0.0
 **Optional:**
 - `requests>=2.28.0` - For future HTTP features
 
+**Web Mode (for --web flag):**
+- `fastapi>=0.104.0` - Web framework for REST API
+- `uvicorn>=0.24.0` - ASGI server for web application
+- `jinja2>=3.1.0` - Template engine for web UI
+- `python-multipart>=0.0.6` - File upload support
+
 **No External Tools Required:**
 - No iTunes installation needed
 - No libimobiledevice required
@@ -223,6 +229,46 @@ Example:
 ```bash
 python run.py --analyze --udid 00008020-001C4D200104002E
 ```
+
+#### 11. Web Server Mode
+
+```bash
+python run.py --web
+```
+
+Start the web server with a full web UI and REST API for managing iOS crash analysis through a browser.
+
+**Features:**
+- **Web Dashboard**: Real-time statistics and device overview
+- **Device Management**: View connected devices, get device info, run analysis
+- **Crash Report Management**: View, search, filter, and delete crash reports
+- **Analysis Tools**: Run device analysis, decode fault codes
+- **File Upload**: Upload crash reports (.ips, .panic, .crash) for analysis
+- **REST API**: Full API access for integration with other tools
+
+**Default Configuration:**
+- Host: 0.0.0.0 (accessible from network)
+- Port: 8000
+- Web UI: http://localhost:8000/web
+- API Docs: http://localhost:8000/docs (FastAPI auto-generated)
+
+**Custom Host/Port:**
+```bash
+python run.py --web --host 127.0.0.1 --port 8080
+```
+
+**API Endpoints:**
+- `GET /api/devices` - List connected devices
+- `GET /api/devices/{udid}/info` - Get device information
+- `POST /api/analyze` - Run full device analysis
+- `GET /api/crash-reports` - Get crash reports from database
+- `POST /api/panic-analysis` - Analyze panic log content
+- `POST /api/upload-crash` - Upload crash report file
+- `GET /api/diagnostics/{udid}` - Get device diagnostics
+- `GET /api/fault-codes` - List all fault codes
+- `POST /api/fault-codes/decode` - Decode fault code
+- `GET /api/stats` - Get database statistics
+- `GET /api/export` - Export crash reports data
 
 ### iPhone Information Display
 
